@@ -23,9 +23,7 @@ public class TextureUtils {
                 IResource iResource = Minecraft.getMinecraft().getResourceManager().getResource(resource);
                 return ImageIO.read(iResource.getInputStream());
             }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        } catch (IOException ignored) {}
         return null;
     }
 }

@@ -15,12 +15,12 @@ public class ClientProxy extends CommonProxy {
 
     public void preInit(FMLPreInitializationEvent event) {
         super.preInit(event);
-        GlyphsRegistry.init();
-        ModernFontSupport.init();
     }
 
     public void init(FMLInitializationEvent event) {
         super.init(event);
+        GlyphsRegistry.init();
+        ModernFontSupport.init();
     }
 
     @Override

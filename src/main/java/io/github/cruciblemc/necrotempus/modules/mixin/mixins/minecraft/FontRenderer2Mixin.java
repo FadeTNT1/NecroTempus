@@ -5,8 +5,8 @@ import io.github.cruciblemc.necrotempus.modules.features.glyphs.GlyphsRegistry;
 import io.github.cruciblemc.necrotempus.modules.features.glyphs.GlyphsRender;
 import io.github.cruciblemc.necrotempus.modules.features.modernfonts.ModernFontEntry;
 import io.github.cruciblemc.necrotempus.modules.features.modernfonts.ModernFontSupport;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.renderer.texture.TextureManager;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -37,6 +37,9 @@ public class FontRenderer2Mixin {
 
     @Shadow
     private float alpha;
+
+    @Shadow
+    private TextureManager renderEngine;
 
     @Unique
     public boolean is_render_modern = false;
@@ -105,24 +108,15 @@ public class FontRenderer2Mixin {
         CustomGlyphs customGlyphs = GlyphsRegistry.getCandidate(character);
 
         if (customGlyphs != null) {
-            cfr.setReturnValue(GlyphsRender.renderGlyph(Minecraft.getMinecraft().getTextureManager(), customGlyphs, posX, posY, shadow, alpha));
+            cfr.setReturnValue(GlyphsRender.renderGlyph(renderEngine, customGlyphs, posX, posY, shadow, alpha));
             GL11.glColor4f(red, blue, green, alpha);
             return;
         }
 
         ModernFontEntry entry = ModernFontSupport.getCandidate(character);
 
-        if (entry != null) {
-
-            cfr.setReturnValue(GlyphsRender.renderGlyph(
-                    Minecraft.getMinecraft().getTextureManager(),
-                    entry,
-                    posX,
-                    posY,
-                    shadow
-            ));
-
-        }
+        if (entry != null)
+            cfr.setReturnValue(GlyphsRender.renderGlyph(renderEngine, entry, posX, posY, shadow));
 
     }
 
@@ -133,6 +127,7 @@ public class FontRenderer2Mixin {
 
         is_render_glyph = GlyphsRegistry.getCandidate(character) != null;
         is_render_modern = ModernFontSupport.hasCandidate(character);
+
         return character;
 
     }

@@ -13,21 +13,8 @@ public class GlyphsRender {
     public static float renderGlyph(TextureManager textureManager, ModernFontEntry entry,
                                     float posX, float posY, boolean shadow) {
 
-        GL11.glPushMatrix();
-        GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
-
         textureManager.bindTexture(entry.location);
-
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        GL11.glEnable(GL11.GL_DEPTH_TEST);
-
         drawGlyphAtlas(posX, posY, entry, shadow);
-
-        GL11.glDisable(GL11.GL_DEPTH_TEST);
-        GL11.glDisable(GL11.GL_BLEND);
-        GL11.glPopAttrib();
-        GL11.glPopMatrix();
 
         return entry.width + 1;
 
@@ -38,29 +25,17 @@ public class GlyphsRender {
     public static float renderGlyph(TextureManager textureManager, CustomGlyphs customGlyphs, float posX, float posY, boolean shadow, float alpha) {
 
         if (!shadow) {
-            GL11.glPushMatrix();
-            GL11.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
             GL11.glColor4f(1, 1, 1, alpha);
 
             textureManager.bindTexture(customGlyphs.getResource());
 
-            GL11.glEnable(GL11.GL_BLEND);
-            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            GL11.glEnable(GL11.GL_DEPTH_TEST);
-
             float realX = posX + (customGlyphs.getHorizontalPadding() * -1);
             float realY = posY + (customGlyphs.getVerticalPadding() * -1);
 
-            if (customGlyphs.getFitMode() != CustomGlyphs.FitMode.NONE) {
+            if (customGlyphs.getFitMode() != CustomGlyphs.FitMode.NONE)
                 drawGlyphContains(realX, realY, customGlyphs);
-            } else
+            else
                 drawGlyph(realX, realY, customGlyphs.getWidth(), customGlyphs.getHeight());
-
-            GL11.glDisable(GL11.GL_DEPTH_TEST);
-            GL11.glDisable(GL11.GL_BLEND);
-            GL11.glPopAttrib();
-            GL11.glPopMatrix();
-
 
         }
 
@@ -79,11 +54,11 @@ public class GlyphsRender {
         add(ts, (x), (y), 0, 0);
 
         ts.draw();
+
     }
 
-    private static void drawGlyphAtlas(float x, float y, ModernFontEntry entry, boolean shadow) {
 
-        Tessellator ts = Tessellator.instance;
+    private static void drawGlyphAtlas(float x, float y, ModernFontEntry entry, boolean shadow) {
 
         float glyphPixelX = entry.atlasX * entry.frameWidth;
         float glyphPixelY = entry.atlasY * entry.frameHeight;
@@ -97,17 +72,22 @@ public class GlyphsRender {
 
         y += (7.0F - entry.ascent);
 
-        ts.startDrawingQuads();
+        GL11.glBegin(GL11.GL_QUADS);
 
-        addToZero(ts, x - offset, y + entry.height, u0, v1);            // Bottom-left
-        addToZero(ts, x + entry.width - offset, y + entry.height, u1, v1); // Bottom-right
-        addToZero(ts, x + entry.width + offset, y, u1, v0);                // Top-right
-        addToZero(ts, x + offset, y, u0, v0);                              // Top-left
+        GL11.glTexCoord2f(u0, v1);
+        GL11.glVertex3f(x - offset, y + entry.height, 0.0F);
 
-        ts.draw();
+        GL11.glTexCoord2f(u1, v1);
+        GL11.glVertex3f(x + entry.width - offset, y + entry.height, 0.0F);
 
+        GL11.glTexCoord2f(u1, v0);
+        GL11.glVertex3f(x + entry.width - offset, y, 0.0F);
+
+        GL11.glTexCoord2f(u0, v0);
+        GL11.glVertex3f(x - offset, y, 0.0F);
+
+        GL11.glEnd();
     }
-
 
     private static void drawGlyphContains(float x, float y, CustomGlyphs customGlyphs) {
 
@@ -139,10 +119,6 @@ public class GlyphsRender {
     }
 
     private static void add(Tessellator tessellator, float x, float y, float textureX, float textureY) {
-        tessellator.addVertexWithUV(x, y, 50F, textureX, textureY);
-    }
-
-    private static void addToZero(Tessellator tessellator, float x, float y, float textureX, float textureY) {
         tessellator.addVertexWithUV(x, y, 0F, textureX, textureY);
     }
 
