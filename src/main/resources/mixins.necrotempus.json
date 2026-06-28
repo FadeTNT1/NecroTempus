@@ -12,6 +12,7 @@
     "bukkit.boss.CraftBossBar",
     "bukkit.player.CraftPlayer",
     "bukkit.playerspigot.CraftPlayerSpigot",
+    "bukkit.scoreboard.CraftTeam",
     "bukkit.server.CraftServer"
   ]
 }

@@ -10,6 +10,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.Constant;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -98,6 +100,16 @@ public abstract class CraftPlayer {
         playerTab.setCellList(new ArrayList<>());
 
         PlayerTab.getPlayerTabManager().set(new HashSet<>(Collections.singleton(getHandle().getUniqueID())), playerTab);
+    }
+
+    /**
+     * Raises the Bukkit player-list name length cap from 16 to 32 so longer tab names can be set
+     * via {@code setPlayerListName}. Must stay in sync with the client read limit in
+     * {@code S38PacketPlayerListItemMixin}.
+     */
+    @ModifyConstant(method = "setPlayerListName", constant = @Constant(intValue = 16), remap = false)
+    private int necro$extendListNameLimit(int original) {
+        return 32;
     }
 
 

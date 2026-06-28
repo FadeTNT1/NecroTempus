@@ -24,6 +24,8 @@ public enum Mixin {
     FontRender2Mixin("minecraft.FontRenderer2Mixin", Side.CLIENT, TargetedMod.VANILLA),
     GuiContainerMixin("minecraft.GuiContainerMixin", Side.CLIENT, TargetedMod.VANILLA),
     GuiIngame("minecraft.GuiIngameMixin", Side.CLIENT, TargetedMod.VANILLA),
+    S38PacketPlayerListItem("minecraft.S38PacketPlayerListItemMixin", Side.CLIENT, TargetedMod.VANILLA),
+    S3EPacketTeams("minecraft.S3EPacketTeamsMixin", Side.CLIENT, TargetedMod.VANILLA),
     GuiChestMixin("minecraft.inv.GuiChestMixin", Side.CLIENT, TargetedMod.VANILLA),
     GuiBrewingStandMixin("minecraft.inv.GuiBrewingStandMixin", Side.CLIENT, TargetedMod.VANILLA),
     GuiDispenserMixin("minecraft.inv.GuiDispenserMixin", Side.CLIENT, TargetedMod.VANILLA),
