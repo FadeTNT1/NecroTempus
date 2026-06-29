@@ -418,11 +418,10 @@ public class PlayerTabGui extends Gui {
 
             if (NecroTempusConfig.enableHeadsFallback && NecroTempusConfig.headsFallbackURL != null && !NecroTempusConfig.headsFallbackURL.isEmpty()) {
 
-                String url = NecroTempusConfig.headsFallbackURL.replaceAll("%name%", gameProfile.getName());
+                String url = buildFallbackSkinUrl(gameProfile);
 
-                if (gameProfile.getId() != null) {
-                    url = url.replaceAll("%uuid%", gameProfile.getId().toString()).replaceAll("%uuidTrim%", gameProfile.getId().toString().replaceAll("-", ""));
-                }
+                if (url == null)
+                    return locationStevePng;
 
                 if (DOWNLOADING_SKINS.contains(url))
                     return locationStevePng;
@@ -470,6 +469,47 @@ public class PlayerTabGui extends Gui {
         }
 
         return resourcelocation;
+    }
+
+    private static String buildFallbackSkinUrl(GameProfile gameProfile) {
+        String url = NecroTempusConfig.headsFallbackURL;
+
+        if (url.contains("%name%")) {
+            String name = gameProfile.getName();
+
+            if (!isValidSkinLookupName(name))
+                return null;
+
+            url = url.replace("%name%", name);
+        }
+
+        if (url.contains("%uuid%") || url.contains("%uuidTrim%")) {
+            if (gameProfile.getId() == null)
+                return null;
+
+            String uuid = gameProfile.getId().toString();
+            url = url.replace("%uuid%", uuid).replace("%uuidTrim%", uuid.replace("-", ""));
+        }
+
+        return url;
+    }
+
+    private static boolean isValidSkinLookupName(String name) {
+        if (name == null || name.isEmpty() || name.length() > 16)
+            return false;
+
+        for (int i = 0; i < name.length(); i++) {
+            char character = name.charAt(i);
+
+            if (!((character >= 'A' && character <= 'Z')
+                    || (character >= 'a' && character <= 'z')
+                    || (character >= '0' && character <= '9')
+                    || character == '_')) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public static String getFormattedPlayerName(String name, Minecraft minecraft) {
