@@ -311,9 +311,7 @@ public class PlayerTabGui extends Gui {
 
         float skinTextureHeight = getBoundSkinTextureHeight();
         func_152125_a(minX, minY, 8F, 8F, 8, 8, 8, 8, 64.0F, skinTextureHeight);
-
-        if (NecroTempusConfig.drawPlayerHeadOverlays)
-            func_152125_a(minX, minY, 40F, 8F, 8, 8, 8, 8, 64.0F, skinTextureHeight);
+        func_152125_a(minX, minY, 40F, 8F, 8, 8, 8, 8, 64.0F, skinTextureHeight);
 
         GL11.glPopMatrix();
 

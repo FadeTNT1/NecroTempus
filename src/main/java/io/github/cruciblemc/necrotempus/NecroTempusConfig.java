@@ -17,9 +17,6 @@ public class NecroTempusConfig {
     @ConfigBoolean(name = "drawPlayersHeads", comment = "Should draw the players heads.", category = "PlayerTab")
     public static boolean drawPlayersHeads = true;
 
-    @ConfigBoolean(name = "drawPlayerHeadOverlays", comment = "Should draw the hat/mask layer over player heads.", category = "PlayerTab")
-    public static boolean drawPlayerHeadOverlays = true;
-
     @ConfigBoolean(name = "extraPaddingBars", comment = "Should have extra padding when drawing bars.", category = "PlayerTab")
     public static boolean extraPaddingBars = true;
 
