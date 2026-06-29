@@ -306,22 +306,32 @@ public class PlayerTabGui extends Gui {
     private int drawPlayerHead(int minX, int minY, TabCell cell) {
         ResourceLocation texture = getPlayerSkin(cell.getSkullProfile());
 
-//        float height = 32F;
-//
-//        try{
-//            IResource resource = Minecraft.getMinecraft().getResourceManager().getResource(texture);
-//            height = ImageIO.read(resource.getInputStream()).getHeight();
-//        } catch (IOException ignored) {}
-
         minecraft.getTextureManager().bindTexture(texture);
         GL11.glPushMatrix();
 
-        func_152125_a(minX, minY, 8F, 8F, 8, 8, 8, 8, 64.0F, 32F);
+        float skinTextureHeight = getBoundSkinTextureHeight();
+        func_152125_a(minX, minY, 8F, 8F, 8, 8, 8, 8, 64.0F, skinTextureHeight);
+
+        if (NecroTempusConfig.drawPlayerHeadOverlays)
+            func_152125_a(minX, minY, 40F, 8F, 8, 8, 8, 8, 64.0F, skinTextureHeight);
 
         GL11.glPopMatrix();
 
         minX += 9;
         return minX;
+    }
+
+    private float getBoundSkinTextureHeight() {
+        try {
+            int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+            int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+
+            if (width > 0 && height >= width)
+                return 64.0F;
+        } catch (Throwable ignored) {
+        }
+
+        return 32.0F;
     }
 
     private void drawBackground(int width, int lastColumnCellCount, int maxContainerWidth, int currentYDrawPosition) {

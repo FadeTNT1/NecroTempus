@@ -17,6 +17,9 @@ public class NecroTempusConfig {
     @ConfigBoolean(name = "drawPlayersHeads", comment = "Should draw the players heads.", category = "PlayerTab")
     public static boolean drawPlayersHeads = true;
 
+    @ConfigBoolean(name = "drawPlayerHeadOverlays", comment = "Should draw the hat/mask layer over player heads.", category = "PlayerTab")
+    public static boolean drawPlayerHeadOverlays = true;
+
     @ConfigBoolean(name = "extraPaddingBars", comment = "Should have extra padding when drawing bars.", category = "PlayerTab")
     public static boolean extraPaddingBars = true;
 
@@ -24,7 +27,7 @@ public class NecroTempusConfig {
     public static boolean enableHeadsFallback = true;
 
     @ConfigString(name = "headsFallbackURL", comment = "Define a custom url to act as fallback for player skin, (%name%, %uuid% and %uuidTrim% can be used).", category = "PlayerTab")
-    public static String headsFallbackURL = "https://minotar.net/skin/%name%.png";
+    public static String headsFallbackURL = "https://visage.surgeplay.com/skin/%name%.png";
 
     @ConfigBoolean(name = "enableSkinPortCompat", comment = "Should use SkinPort if available to patch player heads.", category = "PlayerTab")
     public static boolean enableSkinPortCompat = true;
