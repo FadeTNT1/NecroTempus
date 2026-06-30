@@ -27,9 +27,9 @@ import org.lwjgl.opengl.GL11;
 
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static net.minecraft.client.entity.AbstractClientPlayer.locationStevePng;
 import static net.minecraft.scoreboard.IScoreObjectiveCriteria.health;
@@ -395,7 +395,11 @@ public class PlayerTabGui extends Gui {
         minecraft.fontRenderer.drawStringWithShadow(score, (scoreboardEndX - minecraft.fontRenderer.getStringWidth(score)), minY, 16777215);
     }
 
-    private static final HashSet<String> DOWNLOADING_SKINS = new HashSet<>();
+    private static final long SKIN_DOWNLOAD_RETRY_MILLIS = 60_000L;
+    private static final long SKIN_DOWNLOAD_PRUNE_MILLIS = 15_000L;
+
+    private static final Map<String, Long> DOWNLOADING_SKINS = new ConcurrentHashMap<>();
+    private static volatile long lastSkinDownloadPrune;
     private static SkinProvider skinProvider;
     private static Constructor<MinecraftProfileTexture> constructor = null;
 
@@ -421,7 +425,7 @@ public class PlayerTabGui extends Gui {
                 if (url == null)
                     return locationStevePng;
 
-                if (DOWNLOADING_SKINS.contains(url))
+                if (isSkinDownloadInProgress(url))
                     return locationStevePng;
 
 
@@ -447,7 +451,7 @@ public class PlayerTabGui extends Gui {
                 }
 
                 if(skin != null){
-                    DOWNLOADING_SKINS.add(url);
+                    DOWNLOADING_SKINS.put(url, System.currentTimeMillis());
 
                     String finalUrl = url;
                     return minecraft.func_152342_ad().func_152789_a(skin, MinecraftProfileTexture.Type.SKIN, (skinPart, skinLoc) -> DOWNLOADING_SKINS.remove(finalUrl));
@@ -467,6 +471,36 @@ public class PlayerTabGui extends Gui {
         }
 
         return resourcelocation;
+    }
+
+    private static boolean isSkinDownloadInProgress(String url) {
+        pruneExpiredSkinDownloads();
+
+        Long startedAt = DOWNLOADING_SKINS.get(url);
+
+        if (startedAt == null)
+            return false;
+
+        if (System.currentTimeMillis() - startedAt > SKIN_DOWNLOAD_RETRY_MILLIS) {
+            DOWNLOADING_SKINS.remove(url, startedAt);
+            return false;
+        }
+
+        return true;
+    }
+
+    private static void pruneExpiredSkinDownloads() {
+        long now = System.currentTimeMillis();
+
+        if (now - lastSkinDownloadPrune < SKIN_DOWNLOAD_PRUNE_MILLIS)
+            return;
+
+        lastSkinDownloadPrune = now;
+
+        for (Map.Entry<String, Long> entry : DOWNLOADING_SKINS.entrySet()) {
+            if (now - entry.getValue() > SKIN_DOWNLOAD_RETRY_MILLIS)
+                DOWNLOADING_SKINS.remove(entry.getKey(), entry.getValue());
+        }
     }
 
     private static String buildFallbackSkinUrl(GameProfile gameProfile) {

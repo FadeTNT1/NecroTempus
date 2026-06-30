@@ -21,7 +21,19 @@ public class ChatHeadRenderer {
 
     public static final int CHAT_HEAD_WIDTH = 10;
 
+    private static final int PLAYER_NAME_CACHE_MILLIS = 1_000;
+    private static final int SKIN_HEAD_SIZE = 8;
+    private static final float SKIN_TEXTURE_WIDTH = 64.0F;
+    private static final float SKIN_HEAD_U = 8.0F;
+    private static final float SKIN_HEAD_V = 8.0F;
+    private static final float SKIN_HEAD_OVERLAY_U = 40.0F;
+
     private static final Minecraft MINECRAFT = Minecraft.getMinecraft();
+    private static Map<Character, List<String>> cachedNamesByFirstCharacter = new HashMap<>();
+    private static Object cachedWorld;
+    private static int cachedWorldPlayerCount = -1;
+    private static int cachedTabPlayerCount = -1;
+    private static long nextKnownPlayerNameRefresh;
 
     private ChatHeadRenderer() {
     }
@@ -41,7 +53,7 @@ public class ChatHeadRenderer {
             if (insideWord && isWordCharacter(character))
                 continue;
 
-            List<String> names = namesByFirstCharacter.get(character);
+            List<String> names = namesByFirstCharacter.get(Character.toLowerCase(character));
 
             if (names != null) {
                 for (String name : names) {
@@ -67,20 +79,24 @@ public class ChatHeadRenderer {
 
         ResourceLocation texture = PlayerTabGui.getInstance().getPlayerSkin(gameProfile);
 
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, alpha / 255.0F);
-        MINECRAFT.getTextureManager().bindTexture(texture);
-
         GL11.glPushMatrix();
-        GL11.glEnable(GL11.GL_ALPHA_TEST);
-        GL11.glEnable(GL11.GL_BLEND);
-        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_COLOR_BUFFER_BIT | GL11.GL_CURRENT_BIT);
 
-        float skinTextureHeight = getBoundSkinTextureHeight();
-        Gui.func_152125_a(x, y, 8F, 8F, 8, 8, 8, 8, 64.0F, skinTextureHeight);
-        Gui.func_152125_a(x, y, 40F, 8F, 8, 8, 8, 8, 64.0F, skinTextureHeight);
+        try {
+            GL11.glColor4f(1.0F, 1.0F, 1.0F, alpha / 255.0F);
+            MINECRAFT.getTextureManager().bindTexture(texture);
 
-        GL11.glPopMatrix();
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+            GL11.glEnable(GL11.GL_ALPHA_TEST);
+            GL11.glEnable(GL11.GL_BLEND);
+            OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+
+            float skinTextureHeight = getBoundSkinTextureHeight();
+            Gui.func_152125_a(x, y, SKIN_HEAD_U, SKIN_HEAD_V, SKIN_HEAD_SIZE, SKIN_HEAD_SIZE, SKIN_HEAD_SIZE, SKIN_HEAD_SIZE, SKIN_TEXTURE_WIDTH, skinTextureHeight);
+            Gui.func_152125_a(x, y, SKIN_HEAD_OVERLAY_U, SKIN_HEAD_V, SKIN_HEAD_SIZE, SKIN_HEAD_SIZE, SKIN_HEAD_SIZE, SKIN_HEAD_SIZE, SKIN_TEXTURE_WIDTH, skinTextureHeight);
+        } finally {
+            GL11.glPopAttrib();
+            GL11.glPopMatrix();
+        }
     }
 
     public static int getFormattedIndexForUnformattedIndex(String formattedMessage, int unformattedIndex) {
@@ -142,6 +158,19 @@ public class ChatHeadRenderer {
     }
 
     private static Map<Character, List<String>> getKnownPlayerNamesByFirstCharacter() {
+        int worldPlayerCount = MINECRAFT.theWorld == null ? 0 : MINECRAFT.theWorld.playerEntities.size();
+        int tabPlayerCount = MINECRAFT.thePlayer == null || MINECRAFT.thePlayer.sendQueue == null
+                ? 0
+                : MINECRAFT.thePlayer.sendQueue.playerInfoList.size();
+        long now = System.currentTimeMillis();
+
+        if (now < nextKnownPlayerNameRefresh
+                && MINECRAFT.theWorld == cachedWorld
+                && worldPlayerCount == cachedWorldPlayerCount
+                && tabPlayerCount == cachedTabPlayerCount) {
+            return cachedNamesByFirstCharacter;
+        }
+
         Map<Character, List<String>> namesByFirstCharacter = new HashMap<>();
 
         if (MINECRAFT.theWorld != null) {
@@ -158,6 +187,12 @@ public class ChatHeadRenderer {
             }
         }
 
+        cachedWorld = MINECRAFT.theWorld;
+        cachedWorldPlayerCount = worldPlayerCount;
+        cachedTabPlayerCount = tabPlayerCount;
+        cachedNamesByFirstCharacter = namesByFirstCharacter;
+        nextKnownPlayerNameRefresh = now + PLAYER_NAME_CACHE_MILLIS;
+
         return namesByFirstCharacter;
     }
 
@@ -165,7 +200,7 @@ public class ChatHeadRenderer {
         if (!isValidPlayerName(name))
             return;
 
-        char firstCharacter = name.charAt(0);
+        char firstCharacter = Character.toLowerCase(name.charAt(0));
         List<String> names = namesByFirstCharacter.computeIfAbsent(firstCharacter, ignored -> new ArrayList<>());
 
         if (!names.contains(name))
@@ -176,7 +211,7 @@ public class ChatHeadRenderer {
         if (startIndex + name.length() > message.length())
             return false;
 
-        if (!message.regionMatches(startIndex, name, 0, name.length()))
+        if (!message.regionMatches(true, startIndex, name, 0, name.length()))
             return false;
 
         char lastCharacter = name.charAt(name.length() - 1);
