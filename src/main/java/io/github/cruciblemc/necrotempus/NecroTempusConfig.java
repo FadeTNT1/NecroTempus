@@ -46,4 +46,7 @@ public class NecroTempusConfig {
     @ConfigBoolean(name = "modernFonts", comment = "Enable the modern fonts system.", category = "ModernFonts")
     public static boolean modernFonts = true;
 
+    @ConfigBoolean(name = "ChatHeads", comment = "Enable player heads next to chat messages.", category = "ChatHeads")
+    public static boolean ChatHeadsEnabled = true;
+
 }

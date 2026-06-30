@@ -1,0 +1,249 @@
+package io.github.cruciblemc.necrotempus.modules.features.chatheads.client.render;
+
+import com.mojang.authlib.GameProfile;
+import io.github.cruciblemc.necrotempus.modules.features.playertab.client.render.PlayerTabGui;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.GuiPlayerInfo;
+import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+public class ChatHeadRenderer {
+
+    public static final int CHAT_HEAD_WIDTH = 10;
+
+    private static final Minecraft MINECRAFT = Minecraft.getMinecraft();
+
+    private ChatHeadRenderer() {
+    }
+
+    public static FoundSender findSender(String message) {
+        String strippedMessage = EnumChatFormatting.getTextWithoutFormattingCodes(message);
+
+        if (strippedMessage == null || strippedMessage.isEmpty())
+            return null;
+
+        Map<Character, List<String>> namesByFirstCharacter = getKnownPlayerNamesByFirstCharacter();
+        boolean insideWord = false;
+
+        for (int i = 0; i < strippedMessage.length(); i++) {
+            char character = strippedMessage.charAt(i);
+
+            if (insideWord && isWordCharacter(character))
+                continue;
+
+            List<String> names = namesByFirstCharacter.get(character);
+
+            if (names != null) {
+                for (String name : names) {
+                    if (matchesNameAt(strippedMessage, i, name))
+                        return new FoundSender(name, i);
+                }
+            }
+
+            insideWord = isWordCharacter(character);
+        }
+
+        return null;
+    }
+
+    public static void drawChatHead(String senderName, int x, int y, int alpha) {
+        if (senderName == null || alpha <= 3)
+            return;
+
+        GameProfile gameProfile = getGameProfile(senderName);
+
+        if (gameProfile == null)
+            return;
+
+        ResourceLocation texture = PlayerTabGui.getInstance().getPlayerSkin(gameProfile);
+
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, alpha / 255.0F);
+        MINECRAFT.getTextureManager().bindTexture(texture);
+
+        GL11.glPushMatrix();
+        GL11.glEnable(GL11.GL_ALPHA_TEST);
+        GL11.glEnable(GL11.GL_BLEND);
+        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+
+        float skinTextureHeight = getBoundSkinTextureHeight();
+        Gui.func_152125_a(x, y, 8F, 8F, 8, 8, 8, 8, 64.0F, skinTextureHeight);
+        Gui.func_152125_a(x, y, 40F, 8F, 8, 8, 8, 8, 64.0F, skinTextureHeight);
+
+        GL11.glPopMatrix();
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
+    public static int getFormattedIndexForUnformattedIndex(String formattedMessage, int unformattedIndex) {
+        int visibleCharacters = 0;
+
+        for (int i = 0; i < formattedMessage.length(); i++) {
+            char character = formattedMessage.charAt(i);
+
+            if (character == '\u00a7' && i + 1 < formattedMessage.length()) {
+                i++;
+                continue;
+            }
+
+            if (visibleCharacters == unformattedIndex)
+                return i;
+
+            visibleCharacters++;
+        }
+
+        return formattedMessage.length();
+    }
+
+    public static String getActiveFormatting(String formattedMessage) {
+        String activeColor = "";
+        StringBuilder activeFormatting = new StringBuilder();
+
+        for (int i = 0; i + 1 < formattedMessage.length(); i++) {
+            if (formattedMessage.charAt(i) != '\u00a7')
+                continue;
+
+            char formatCode = Character.toLowerCase(formattedMessage.charAt(i + 1));
+
+            if (isColorCode(formatCode) || formatCode == 'r') {
+                activeColor = formatCode == 'r' ? "" : "\u00a7" + formatCode;
+                activeFormatting.setLength(0);
+            } else if (isStyleCode(formatCode)) {
+                activeFormatting.append('\u00a7').append(formatCode);
+            }
+
+            i++;
+        }
+
+        return activeColor + activeFormatting;
+    }
+
+    private static boolean isColorCode(char formatCode) {
+        return (formatCode >= '0' && formatCode <= '9') || (formatCode >= 'a' && formatCode <= 'f');
+    }
+
+    private static boolean isStyleCode(char formatCode) {
+        return formatCode >= 'k' && formatCode <= 'o';
+    }
+
+    private static boolean isWordCharacter(char character) {
+        return (character >= 'A' && character <= 'Z')
+                || (character >= 'a' && character <= 'z')
+                || (character >= '0' && character <= '9')
+                || character == '_';
+    }
+
+    private static Map<Character, List<String>> getKnownPlayerNamesByFirstCharacter() {
+        Map<Character, List<String>> namesByFirstCharacter = new HashMap<>();
+
+        if (MINECRAFT.theWorld != null) {
+            for (Object player : MINECRAFT.theWorld.playerEntities) {
+                if (player instanceof EntityPlayer)
+                    addKnownName(namesByFirstCharacter, ((EntityPlayer) player).getGameProfile().getName());
+            }
+        }
+
+        if (MINECRAFT.thePlayer != null && MINECRAFT.thePlayer.sendQueue != null) {
+            for (Object playerInfo : MINECRAFT.thePlayer.sendQueue.playerInfoList) {
+                if (playerInfo instanceof GuiPlayerInfo)
+                    addKnownName(namesByFirstCharacter, ((GuiPlayerInfo) playerInfo).name);
+            }
+        }
+
+        return namesByFirstCharacter;
+    }
+
+    private static void addKnownName(Map<Character, List<String>> namesByFirstCharacter, String name) {
+        if (!isValidPlayerName(name))
+            return;
+
+        char firstCharacter = name.charAt(0);
+        List<String> names = namesByFirstCharacter.computeIfAbsent(firstCharacter, ignored -> new ArrayList<>());
+
+        if (!names.contains(name))
+            names.add(name);
+    }
+
+    private static boolean matchesNameAt(String message, int startIndex, String name) {
+        if (startIndex + name.length() > message.length())
+            return false;
+
+        if (!message.regionMatches(startIndex, name, 0, name.length()))
+            return false;
+
+        char lastCharacter = name.charAt(name.length() - 1);
+
+        return !isWordCharacter(lastCharacter)
+                || startIndex + name.length() >= message.length()
+                || !isWordCharacter(message.charAt(startIndex + name.length()));
+    }
+
+    private static GameProfile getGameProfile(String name) {
+        if (MINECRAFT.theWorld != null) {
+            EntityPlayer player = MINECRAFT.theWorld.getPlayerEntityByName(name);
+
+            if (player != null)
+                return player.getGameProfile();
+        }
+
+        return new GameProfile((UUID) null, name);
+    }
+
+    private static boolean isValidPlayerName(String name) {
+        if (name == null || name.isEmpty() || name.length() > 16)
+            return false;
+
+        for (int i = 0; i < name.length(); i++) {
+            char character = name.charAt(i);
+
+            if (!((character >= 'A' && character <= 'Z')
+                    || (character >= 'a' && character <= 'z')
+                    || (character >= '0' && character <= '9')
+                    || character == '_')) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static float getBoundSkinTextureHeight() {
+        try {
+            int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+            int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+
+            if (width > 0 && height >= width)
+                return 64.0F;
+        } catch (Throwable ignored) {
+        }
+
+        return 32.0F;
+    }
+
+    public static class FoundSender {
+
+        private final String name;
+        private final int unformattedIndex;
+
+        private FoundSender(String name, int unformattedIndex) {
+            this.name = name;
+            this.unformattedIndex = unformattedIndex;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public int getUnformattedIndex() {
+            return unformattedIndex;
+        }
+    }
+}

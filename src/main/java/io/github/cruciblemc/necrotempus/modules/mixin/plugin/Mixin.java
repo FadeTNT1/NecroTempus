@@ -24,6 +24,7 @@ public enum Mixin {
     FontRender2Mixin("minecraft.FontRenderer2Mixin", Side.CLIENT, TargetedMod.VANILLA),
     GuiContainerMixin("minecraft.GuiContainerMixin", Side.CLIENT, TargetedMod.VANILLA),
     GuiIngame("minecraft.GuiIngameMixin", Side.CLIENT, TargetedMod.VANILLA),
+    GuiNewChatMixin("minecraft.GuiNewChatMixin", Side.CLIENT, TargetedMod.VANILLA),
     AbstractClientPlayerMixin("minecraft.AbstractClientPlayerMixin", Side.CLIENT, TargetedMod.VANILLA),
     ThreadDownloadImageDataMixin("minecraft.ThreadDownloadImageDataMixin", Side.CLIENT, TargetedMod.VANILLA),
     S38PacketPlayerListItem("minecraft.S38PacketPlayerListItemMixin", Side.CLIENT, TargetedMod.VANILLA),
@@ -55,6 +56,15 @@ public enum Mixin {
             return false;
 
         if (this == GuiIngame && !NecroTempusConfig.ScoreBoardEnabled) {
+            return false;
+        }
+
+        if (this == GuiNewChatMixin && !NecroTempusConfig.ChatHeadsEnabled) {
+            return false;
+        }
+
+        if ((this == AbstractClientPlayerMixin || this == ThreadDownloadImageDataMixin)
+                && loadedMods.contains(TargetedMod.HODGEPODGE)) {
             return false;
         }
 

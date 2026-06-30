@@ -19,7 +19,8 @@ public enum TargetedMod {
 
     VANILLA("Minecraft", "unused", true),
     BOTANIA("Botania", "botania", true, "botania"),
-    CUSTOM_NPCS("CustomNPC", "CustomNPC", true, "customnpcs");
+    CUSTOM_NPCS("CustomNPC", "CustomNPC", true, "customnpcs"),
+    HODGEPODGE("Hodgepodge", "hodgepodge", false, "hodgepodge");
 
     public final String modName;
     public final String jarNamePrefixLowercase;
