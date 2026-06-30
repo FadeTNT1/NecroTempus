@@ -23,6 +23,7 @@ public enum Mixin {
     FontRenderMixin("minecraft.FontRendererMixin", Side.CLIENT, TargetedMod.VANILLA),
     FontRender2Mixin("minecraft.FontRenderer2Mixin", Side.CLIENT, TargetedMod.VANILLA),
     GuiContainerMixin("minecraft.GuiContainerMixin", Side.CLIENT, TargetedMod.VANILLA),
+    GuiChatMixin("minecraft.GuiChatMixin", Side.CLIENT, TargetedMod.VANILLA),
     GuiIngame("minecraft.GuiIngameMixin", Side.CLIENT, TargetedMod.VANILLA),
     GuiNewChatMixin("minecraft.GuiNewChatMixin", Side.CLIENT, TargetedMod.VANILLA),
     AbstractClientPlayerMixin("minecraft.AbstractClientPlayerMixin", Side.CLIENT, TargetedMod.VANILLA),
@@ -56,10 +57,6 @@ public enum Mixin {
             return false;
 
         if (this == GuiIngame && !NecroTempusConfig.ScoreBoardEnabled) {
-            return false;
-        }
-
-        if (this == GuiNewChatMixin && !NecroTempusConfig.ChatHeadsEnabled) {
             return false;
         }
 

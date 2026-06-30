@@ -2,6 +2,7 @@ package io.github.cruciblemc.necrotempus.modules.mixin.mixins.minecraft;
 
 import io.github.cruciblemc.necrotempus.NecroTempusConfig;
 import io.github.cruciblemc.necrotempus.modules.features.chatheads.client.render.ChatHeadRenderer;
+import io.github.cruciblemc.necrotempus.utils.ChatFormattingUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ChatLine;
 import net.minecraft.client.gui.FontRenderer;
@@ -45,6 +46,7 @@ public class GuiNewChatMixin {
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/gui/FontRenderer;drawStringWithShadow(Ljava/lang/String;III)I"))
     private int necrotempus$drawStringWithChatHead(FontRenderer fontRenderer, String text, int x, int y, int color) {
+        text = ChatFormattingUtils.translateAlternateColorCodes(text);
         ChatHeadRenderer.FoundSender sender = getCurrentSender(text, y);
 
         if (sender != null) {
