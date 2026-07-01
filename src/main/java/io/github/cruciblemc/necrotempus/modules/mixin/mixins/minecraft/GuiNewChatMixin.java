@@ -57,7 +57,7 @@ public class GuiNewChatMixin {
             int alpha = color >>> 24;
 
             fontRenderer.drawStringWithShadow(prefix, x, y, color);
-            ChatHeadRenderer.drawChatHead(sender.getName(), x + prefixWidth, y, alpha);
+            ChatHeadRenderer.drawChatHead(sender.getProfile(), x + prefixWidth, y, alpha);
 
             String activeFormatting = ChatHeadRenderer.getActiveFormatting(prefix);
             return fontRenderer.drawStringWithShadow(
@@ -91,7 +91,7 @@ public class GuiNewChatMixin {
             ChatLine chatLine = (ChatLine) field_146253_i.get(lineIndex + field_146250_j);
 
             if (chatLine != null)
-                return ChatHeadRenderer.findSender(chatLine.func_151461_a().getUnformattedText());
+                return ChatHeadRenderer.findSender(chatLine);
         }
 
         return null;

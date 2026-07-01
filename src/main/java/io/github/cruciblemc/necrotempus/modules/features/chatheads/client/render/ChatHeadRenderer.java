@@ -3,6 +3,7 @@ package io.github.cruciblemc.necrotempus.modules.features.chatheads.client.rende
 import com.mojang.authlib.GameProfile;
 import io.github.cruciblemc.necrotempus.modules.features.playertab.client.render.PlayerTabGui;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ChatLine;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiPlayerInfo;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -12,16 +13,22 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.UUID;
+import java.util.WeakHashMap;
 
 public class ChatHeadRenderer {
 
     public static final int CHAT_HEAD_WIDTH = 10;
 
     private static final int PLAYER_NAME_CACHE_MILLIS = 1_000;
+    private static final long SERVER_SENDER_METADATA_TTL_MILLIS = 5_000L;
     private static final int SKIN_HEAD_SIZE = 8;
     private static final float SKIN_TEXTURE_WIDTH = 64.0F;
     private static final float SKIN_HEAD_U = 8.0F;
@@ -30,16 +37,59 @@ public class ChatHeadRenderer {
 
     private static final Minecraft MINECRAFT = Minecraft.getMinecraft();
     private static Map<Character, List<String>> cachedNamesByFirstCharacter = new HashMap<>();
+    private static final Map<ChatLine, FoundSender> CHAT_LINE_SENDERS = Collections.synchronizedMap(new WeakHashMap<>());
+    private static final Queue<ServerSender> SERVER_SENDERS = new ArrayDeque<>();
     private static Object cachedWorld;
     private static int cachedWorldPlayerCount = -1;
     private static int cachedTabPlayerCount = -1;
     private static long nextKnownPlayerNameRefresh;
+    private static boolean serverSentSenderMetadata;
 
     private ChatHeadRenderer() {
     }
 
+    public static void rememberServerSender(GameProfile profile, String displayName, String message) {
+        if (profile == null || profile.getId() == null)
+            return;
+
+        synchronized (SERVER_SENDERS) {
+            serverSentSenderMetadata = true;
+            SERVER_SENDERS.add(new ServerSender(profile, stripFormatting(displayName), stripFormatting(message), System.currentTimeMillis()));
+            pruneExpiredServerSenders();
+        }
+    }
+
+    public static void resetServerSenders() {
+        synchronized (SERVER_SENDERS) {
+            SERVER_SENDERS.clear();
+            CHAT_LINE_SENDERS.clear();
+            serverSentSenderMetadata = false;
+        }
+    }
+
+    public static FoundSender findSender(ChatLine chatLine) {
+        if (chatLine == null || chatLine.func_151461_a() == null)
+            return null;
+
+        FoundSender cachedSender = CHAT_LINE_SENDERS.get(chatLine);
+
+        if (cachedSender != null)
+            return cachedSender;
+
+        String message = chatLine.func_151461_a().getUnformattedText();
+        FoundSender sender = findServerSender(message);
+
+        if (sender == null && !serverSentSenderMetadata)
+            sender = findSender(message);
+
+        if (sender != null)
+            CHAT_LINE_SENDERS.put(chatLine, sender);
+
+        return sender;
+    }
+
     public static FoundSender findSender(String message) {
-        String strippedMessage = EnumChatFormatting.getTextWithoutFormattingCodes(message);
+        String strippedMessage = stripFormatting(message);
 
         if (strippedMessage == null || strippedMessage.isEmpty())
             return null;
@@ -57,8 +107,12 @@ public class ChatHeadRenderer {
 
             if (names != null) {
                 for (String name : names) {
-                    if (matchesNameAt(strippedMessage, i, name))
-                        return new FoundSender(name, i);
+                    if (matchesNameAt(strippedMessage, i, name)) {
+                        GameProfile profile = getGameProfile(name);
+
+                        if (profile != null)
+                            return new FoundSender(profile, i);
+                    }
                 }
             }
 
@@ -68,13 +122,8 @@ public class ChatHeadRenderer {
         return null;
     }
 
-    public static void drawChatHead(String senderName, int x, int y, int alpha) {
-        if (senderName == null || alpha <= 3)
-            return;
-
-        GameProfile gameProfile = getGameProfile(senderName);
-
-        if (gameProfile == null)
+    public static void drawChatHead(GameProfile gameProfile, int x, int y, int alpha) {
+        if (gameProfile == null || alpha <= 3)
             return;
 
         ResourceLocation texture = PlayerTabGui.getInstance().getPlayerSkin(gameProfile);
@@ -140,6 +189,81 @@ public class ChatHeadRenderer {
         }
 
         return activeColor + activeFormatting;
+    }
+
+    private static FoundSender findServerSender(String message) {
+        String strippedMessage = stripFormatting(message);
+
+        if (strippedMessage == null || strippedMessage.isEmpty())
+            return null;
+
+        synchronized (SERVER_SENDERS) {
+            pruneExpiredServerSenders();
+
+            Iterator<ServerSender> iterator = SERVER_SENDERS.iterator();
+
+            while (iterator.hasNext()) {
+                ServerSender sender = iterator.next();
+
+                if (!matchesServerMessage(sender.message, strippedMessage))
+                    continue;
+
+                iterator.remove();
+
+                int index = findNameIndex(strippedMessage, sender.displayName);
+
+                if (index < 0)
+                    index = findNameIndex(strippedMessage, sender.profile.getName());
+
+                return new FoundSender(sender.profile, index >= 0 ? index : 0);
+            }
+        }
+
+        return null;
+    }
+
+    private static boolean matchesServerMessage(String fullMessage, String chatLineMessage) {
+        if (fullMessage == null || chatLineMessage == null)
+            return false;
+
+        return fullMessage.equals(chatLineMessage)
+                || fullMessage.startsWith(chatLineMessage)
+                || chatLineMessage.startsWith(fullMessage);
+    }
+
+    private static int findNameIndex(String message, String name) {
+        if (name == null || name.isEmpty())
+            return -1;
+
+        boolean insideWord = false;
+
+        for (int i = 0; i < message.length(); i++) {
+            char character = message.charAt(i);
+
+            if (insideWord && isWordCharacter(character))
+                continue;
+
+            if (matchesNameAt(message, i, name))
+                return i;
+
+            insideWord = isWordCharacter(character);
+        }
+
+        return -1;
+    }
+
+    private static void pruneExpiredServerSenders() {
+        long now = System.currentTimeMillis();
+        Iterator<ServerSender> iterator = SERVER_SENDERS.iterator();
+
+        while (iterator.hasNext()) {
+            if (now - iterator.next().createdAt > SERVER_SENDER_METADATA_TTL_MILLIS)
+                iterator.remove();
+        }
+    }
+
+    private static String stripFormatting(String message) {
+        return EnumChatFormatting.getTextWithoutFormattingCodes(message);
     }
 
     private static boolean isColorCode(char formatCode) {
@@ -265,20 +389,39 @@ public class ChatHeadRenderer {
 
     public static class FoundSender {
 
-        private final String name;
+        private final GameProfile profile;
         private final int unformattedIndex;
 
-        private FoundSender(String name, int unformattedIndex) {
-            this.name = name;
+        private FoundSender(GameProfile profile, int unformattedIndex) {
+            this.profile = profile;
             this.unformattedIndex = unformattedIndex;
         }
 
         public String getName() {
-            return name;
+            return profile.getName();
+        }
+
+        public GameProfile getProfile() {
+            return profile;
         }
 
         public int getUnformattedIndex() {
             return unformattedIndex;
+        }
+    }
+
+    private static class ServerSender {
+
+        private final GameProfile profile;
+        private final String displayName;
+        private final String message;
+        private final long createdAt;
+
+        private ServerSender(GameProfile profile, String displayName, String message, long createdAt) {
+            this.profile = profile;
+            this.displayName = displayName;
+            this.message = message;
+            this.createdAt = createdAt;
         }
     }
 }
